@@ -36,19 +36,11 @@ curl -X POST http://127.0.0.1:5111/speak -H 'Content-Type: application/json' -d 
 
 ## Claude Code Hook
 
-Add to your `.claude/hooks.json`:
-```json
-{
-  "hooks": {
-    "notification": [
-      {
-        "type": "command",
-        "command": "/path/to/claude-voice-hooks/hooks/notify.sh"
-      }
-    ]
-  }
-}
-```
+Run `./setup.sh` from the project root — it auto-merges hook entries into `~/.claude/settings.json`.
+
+To register hooks manually, see `~/.claude/settings.json`. The setup script registers
+`Stop`, `UserPromptSubmit`, `PreToolUse`, `SubagentStart`, `PermissionRequest`, and
+`Notification` hooks — check the generated file for the full structure.
 
 ## Endpoints
 
