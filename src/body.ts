@@ -234,7 +234,7 @@ export function updateBody(deltaMs: number, mode: Mode, mood: Mood, amplitude: n
   keystrokeCooldown = Math.max(0, keystrokeCooldown - deltaMs);
 
   if (mode !== lastLoggedMode) {
-    console.log(`[V1R4] Body mode: ${mode}, mood: ${mood}`);
+    if (import.meta.env.DEV) console.log(`[V1R4] Body mode: ${mode}, mood: ${mood}`);
     lastLoggedMode = mode;
   }
 

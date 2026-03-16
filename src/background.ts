@@ -142,7 +142,7 @@ function createImageTexture(
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(tmpCanvas, 0, 0, size, size);
-    console.log(`[V1R4] Background blur applied: ${blur}px → scale ${scale.toFixed(3)}`);
+    if (import.meta.env.DEV) console.log(`[V1R4] Background blur applied: ${blur}px → scale ${scale.toFixed(3)}`);
   }
 
   // Darken slightly for better avatar contrast
@@ -233,7 +233,18 @@ export const BACKGROUND_PRESETS: Record<string, BackgroundConfig> = {
 };
 
 // Image cache — avoids reloading when only blur/vignette/tint changes
+const IMAGE_CACHE_MAX = 10;
 const imageCache = new Map<string, HTMLImageElement>();
+
+/** Evict oldest entries when cache exceeds max size */
+function imageCacheSet(key: string, value: HTMLImageElement): void {
+  imageCache.set(key, value);
+  if (imageCache.size > IMAGE_CACHE_MAX) {
+    // Map iterates in insertion order — delete the first (oldest) entry
+    const oldest = imageCache.keys().next().value;
+    if (oldest !== undefined) imageCache.delete(oldest);
+  }
+}
 
 /** Dispose previous background texture to free GPU memory */
 function disposePreviousBackground(scene: THREE.Scene): void {
@@ -266,7 +277,7 @@ export async function applyBackground(
           let img = imageCache.get(config.imagePath);
           if (!img) {
             img = await loadImage(config.imagePath);
-            imageCache.set(config.imagePath, img);
+            imageCacheSet(config.imagePath, img);
           }
           scene.background = createImageTexture(
             img,
@@ -276,7 +287,7 @@ export async function applyBackground(
             config.tintOpacity,
           );
         } catch (e) {
-          console.warn('[V1R4] Failed to load background image, falling back to gradient', e);
+          if (import.meta.env.DEV) console.warn('[V1R4] Failed to load background image, falling back to gradient', e);
           scene.background = createGradientTexture('#2d1854', '#0c0618');
         }
       }
@@ -291,11 +302,11 @@ export function loadBackgroundConfig(): BackgroundConfig {
     const saved = localStorage.getItem('v1r4-background');
     if (saved) {
       const config = JSON.parse(saved) as BackgroundConfig;
-      console.log('[V1R4] Background config (saved):', config);
+      if (import.meta.env.DEV) console.log('[V1R4] Background config (saved):', config);
       return config;
     }
   } catch { /* ignore parse errors, use default */ }
-  console.log('[V1R4] Background config (default):', DEFAULT_CONFIG);
+  if (import.meta.env.DEV) console.log('[V1R4] Background config (default):', DEFAULT_CONFIG);
   return DEFAULT_CONFIG;
 }
 

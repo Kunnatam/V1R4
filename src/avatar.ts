@@ -45,32 +45,38 @@ export async function loadAvatar(scene: THREE.Scene, url: string): Promise<VRM> 
         setupRestPose(model);
         enhanceMToonMaterials(model);
         // Log spring bone and expression info for debugging
-        const sbm = model.springBoneManager;
-        const joints = sbm?.joints?.size ?? 0;
-        console.log(`[V1R4] Spring bones: ${joints} joints`);
-        const exprs = model.expressionManager?.expressions?.map(e => e.expressionName) ?? [];
-        console.log(`[V1R4] Expressions: ${exprs.join(', ')}`);
-        // Log which humanoid bones are available
-        const humanoid = model.humanoid;
-        if (humanoid) {
-          const boneNames = [
-            'hips', 'spine', 'chest', 'upperChest', 'neck', 'head',
-            'leftEye', 'rightEye', 'jaw',
-            'leftShoulder', 'rightShoulder',
-            'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
-            'leftHand', 'rightHand',
-            'leftThumbMetacarpal', 'leftIndexProximal', 'leftMiddleProximal',
-            'leftRingProximal', 'leftLittleProximal',
-          ];
-          const available = boneNames.filter(b => humanoid.getNormalizedBoneNode(b as any));
-          console.log(`[V1R4] Bones available: ${available.join(', ')}`);
+        if (import.meta.env.DEV) {
+          const sbm = model.springBoneManager;
+          const joints = sbm?.joints?.size ?? 0;
+          console.log(`[V1R4] Spring bones: ${joints} joints`);
+          const exprs = model.expressionManager?.expressions?.map(e => e.expressionName) ?? [];
+          console.log(`[V1R4] Expressions: ${exprs.join(', ')}`);
         }
-        console.log('[V1R4] VRM loaded:', url);
+        // Log which humanoid bones are available
+        if (import.meta.env.DEV) {
+          const humanoid = model.humanoid;
+          if (humanoid) {
+            const boneNames = [
+              'hips', 'spine', 'chest', 'upperChest', 'neck', 'head',
+              'leftEye', 'rightEye', 'jaw',
+              'leftShoulder', 'rightShoulder',
+              'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
+              'leftHand', 'rightHand',
+              'leftThumbMetacarpal', 'leftIndexProximal', 'leftMiddleProximal',
+              'leftRingProximal', 'leftLittleProximal',
+            ];
+            const available = boneNames.filter(b => humanoid.getNormalizedBoneNode(b as any));
+            console.log(`[V1R4] Bones available: ${available.join(', ')}`);
+          }
+          console.log('[V1R4] VRM loaded:', url);
+        }
         resolve(model);
       },
       (progress) => {
-        const pct = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(0) : '?';
-        console.log(`[V1R4] Loading VRM: ${pct}%`);
+        if (import.meta.env.DEV) {
+          const pct = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(0) : '?';
+          console.log(`[V1R4] Loading VRM: ${pct}%`);
+        }
       },
       (error) => reject(error)
     );
@@ -101,7 +107,7 @@ function setupRestPose(model: VRM): void {
     if (Math.abs(bindZ) > 0.3) {
       REST_ARM_Z = bindZ + (TARGET_Z - Math.abs(bindZ));
     }
-    console.log(`[V1R4] Arm bind pose Z: ${bindZ.toFixed(3)}, rest target: ${REST_ARM_Z.toFixed(3)}`);
+    if (import.meta.env.DEV) console.log(`[V1R4] Arm bind pose Z: ${bindZ.toFixed(3)}, rest target: ${REST_ARM_Z.toFixed(3)}`);
   }
 
   // Apply rest pose
@@ -164,7 +170,7 @@ function enhanceMToonMaterials(model: VRM): void {
       mtoon.needsUpdate = true;
     }
   });
-  console.log(`[V1R4] Enhanced ${matCount} MToon materials: parametric rim + warm shading`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Enhanced ${matCount} MToon materials: parametric rim + warm shading`);
 }
 
 /** Set a VRM expression (blend shape) value. Silently ignores unknown names. */
