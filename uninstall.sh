@@ -92,14 +92,22 @@ except (json.JSONDecodeError, IOError) as e:
 hooks = settings.get("hooks", {})
 
 def is_v1r4(entry):
-    return any("v1r4" in h.get("command", "").lower() for h in entry.get("hooks", []))
+    v1r4_scripts = ("notify.sh", "status.sh")
+    for h in entry.get("hooks", []):
+        cmd = h.get("command", "")
+        # Match on script filename (reliable) or directory name (fallback)
+        if any(cmd.rstrip().endswith(f"server/hooks/{s}") for s in v1r4_scripts):
+            return True
+        if "v1r4" in cmd.lower():
+            return True
+    return False
 
 if mode == "detect":
     found = []
     for event_name, entries in hooks.items():
         for entry in entries:
             if is_v1r4(entry):
-                cmd = next(h["command"] for h in entry.get("hooks", []) if "v1r4" in h.get("command", "").lower())
+                cmd = next(h["command"] for h in entry.get("hooks", []) if is_v1r4({"hooks": [h]}))
                 found.append(f"  {event_name}: {cmd}")
     print("\n".join(found) if found else "")
 
@@ -149,7 +157,15 @@ except (json.JSONDecodeError, IOError) as e:
 hooks = settings.get("hooks", {})
 
 def is_v1r4(entry):
-    return any("v1r4" in h.get("command", "").lower() for h in entry.get("hooks", []))
+    v1r4_scripts = ("notify.sh", "status.sh")
+    for h in entry.get("hooks", []):
+        cmd = h.get("command", "")
+        # Match on script filename (reliable) or directory name (fallback)
+        if any(cmd.rstrip().endswith(f"server/hooks/{s}") for s in v1r4_scripts):
+            return True
+        if "v1r4" in cmd.lower():
+            return True
+    return False
 
 cleaned = {}
 for event_name, entries in hooks.items():
@@ -216,8 +232,8 @@ if [ -f "$CLAUDE_MD" ]; then
             cp "$CLAUDE_MD" "${CLAUDE_MD}.bak"
             # Remove the V1R4 section (markers inclusive)
             awk -v start="$V1R4_START" -v end="$V1R4_END" '
-                $0 ~ start { skip=1; next }
-                $0 ~ end   { skip=0; next }
+                $0 == start { skip=1; next }
+                $0 == end   { skip=0; next }
                 !skip { print }
             ' "$CLAUDE_MD" > "${CLAUDE_MD}.tmp"
 
@@ -227,7 +243,7 @@ if [ -f "$CLAUDE_MD" ]; then
                 echo -e "  ${YELLOW}CLAUDE.md is now empty after removing V1R4 section.${NC}"
                 read -rp "  Delete the file entirely? (y/n) > " DELETE_MD
                 if [[ "$DELETE_MD" == "y" || "$DELETE_MD" == "Y" ]]; then
-                    rm -f "$CLAUDE_MD" "${CLAUDE_MD}.tmp"
+                    rm -f "$CLAUDE_MD" "${CLAUDE_MD}.tmp" "${CLAUDE_MD}.bak"
                     ok "~/.claude/CLAUDE.md deleted (was empty)"
                     REMOVED+=("CLAUDE.md (deleted)")
                 else
