@@ -45,7 +45,7 @@ export function initWind(): void {
     i++;
   }
   initialized = true;
-  console.log(`[V1R4] Wind system initialized: ${origSettings.size} spring bone joints`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Wind system initialized: ${origSettings.size} spring bone joints`);
 }
 
 /** Update wind every frame — modifies spring bone gravity to create wind effect */

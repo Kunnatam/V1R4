@@ -69,19 +69,19 @@ export function setSubtitle(text: string, duration: number): void {
   subtitleDuration = duration > 0 ? duration : text.length * 0.06; // fallback: ~60ms per char
   subtitleOpacity = 0.02; // kick-start opacity so first frame renders
   subtitleOpacityTarget = 1.0;
-  console.log(`[V1R4] Subtitle set: "${text.slice(0, 60)}..." dur=${subtitleDuration.toFixed(1)}s`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Subtitle set: "${text.slice(0, 60)}..." dur=${subtitleDuration.toFixed(1)}s`);
 }
 
 /** Clear subtitle (called when speaking stops) */
 export function clearSubtitle(): void {
   subtitleOpacityTarget = 0;
-  console.log('[V1R4] Subtitle cleared');
+  if (import.meta.env.DEV) console.log('[V1R4] Subtitle cleared');
 }
 
 /** Toggle waveform on/off */
 export function toggleWaveform(): boolean {
   waveformEnabled = !waveformEnabled;
-  console.log(`[V1R4] Waveform: ${waveformEnabled ? 'ON' : 'OFF'}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Waveform: ${waveformEnabled ? 'ON' : 'OFF'}`);
   return waveformEnabled;
 }
 
@@ -92,7 +92,7 @@ export function toggleSubtitles(): boolean {
     subtitleOpacityTarget = 0;
     subtitleText = '';
   }
-  console.log(`[V1R4] Subtitles: ${subtitlesEnabled ? 'ON' : 'OFF'}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Subtitles: ${subtitlesEnabled ? 'ON' : 'OFF'}`);
   return subtitlesEnabled;
 }
 
@@ -116,7 +116,15 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines;
 }
 
+let overlayResizeHandler: (() => void) | null = null;
+
 export function initOverlayEffects(): void {
+  // Remove previous resize listener if re-initialized
+  if (overlayResizeHandler) {
+    window.removeEventListener('resize', overlayResizeHandler);
+    overlayResizeHandler = null;
+  }
+
   canvas = document.createElement('canvas');
   canvas.id = 'overlay-effects';
   canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
@@ -129,6 +137,7 @@ export function initOverlayEffects(): void {
     canvas.height = window.innerHeight * window.devicePixelRatio;
   };
   resize();
+  overlayResizeHandler = resize;
   window.addEventListener('resize', resize);
 }
 

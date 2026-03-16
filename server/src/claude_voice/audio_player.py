@@ -89,6 +89,7 @@ class AudioPlayer:
             samples_written = [0]
             stream_start = [time.monotonic()]
             output_latency = getattr(self._stream, 'latency', 0.085)  # fallback 85ms
+            shared_lock = threading.Lock()  # protects samples_written, running_peak, amp_callback
 
             def amp_emitter():
                 """Emit amplitude levels synced to actual audio playback clock."""
@@ -105,7 +106,8 @@ class AudioPlayer:
                     now = time.monotonic()
                     if target_time > now:
                         time.sleep(target_time - now)
-                    cb = amp_callback[0]
+                    with shared_lock:
+                        cb = amp_callback[0]
                     if cb:
                         cb(level)
 
@@ -119,7 +121,8 @@ class AudioPlayer:
             try:
                 def write(audio: np.ndarray, on_amplitude=None):
                     if on_amplitude:
-                        amp_callback[0] = on_amplitude
+                        with shared_lock:
+                            amp_callback[0] = on_amplitude
 
                     play_audio = audio * self.volume if self.volume < 1.0 else audio
                     self._stream.write(play_audio.reshape(-1, 1))
@@ -128,15 +131,17 @@ class AudioPlayer:
                         window_samples = int(sample_rate * AMPLITUDE_INTERVAL)
                         # Running peak: decay previous, update with current chunk
                         chunk_peak = float(np.max(np.abs(audio)))
-                        running_peak[0] = max(running_peak[0] * PEAK_DECAY, chunk_peak) or 1.0
-                        peak = running_peak[0]
-                        base_offset = samples_written[0]
+                        with shared_lock:
+                            running_peak[0] = max(running_peak[0] * PEAK_DECAY, chunk_peak) or 1.0
+                            peak = running_peak[0]
+                            base_offset = samples_written[0]
                         for i in range(0, len(audio), window_samples):
                             window = audio[i:i + window_samples]
                             rms = float(np.sqrt(np.mean(window ** 2)))
                             # Tag with sample offset for clock-synced emission
                             amp_queue.put((min(rms / peak, 1.0), base_offset + i))
-                        samples_written[0] += len(audio)
+                        with shared_lock:
+                            samples_written[0] += len(audio)
 
                 yield write
             finally:

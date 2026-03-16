@@ -82,7 +82,7 @@ function onStatusMessage(msg: StatusMessage): void {
       break;
 
     case 'text':
-      console.log(`[V1R4] WS text received: "${msg.value.slice(0, 60)}..." dur=${msg.duration}`);
+      if (import.meta.env.DEV) console.log(`[V1R4] WS text received: "${msg.value.slice(0, 60)}..." dur=${msg.duration}`);
       setSubtitle(msg.value, msg.duration);
       break;
 
@@ -92,7 +92,7 @@ function onStatusMessage(msg: StatusMessage): void {
         state.mode = 'speaking';
         state.speaking = true;
         notifySpeakStart();
-        console.log('[V1R4] Speaking START — state.speaking =', state.speaking);
+        if (import.meta.env.DEV) console.log('[V1R4] Speaking START — state.speaking =', state.speaking);
       } else {
         speakingStopTimer = setTimeout(() => {
           state.speaking = false;
@@ -142,23 +142,33 @@ function pickImageFile(): Promise<string | null> {
     input.type = 'file';
     input.accept = 'image/*';
     input.style.display = 'none';
+    let resolved = false;
+    const cleanup = () => {
+      window.removeEventListener('focus', onFocus);
+      input.remove();
+    };
+    const resolveOnce = (value: string | null) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(value);
+    };
     input.addEventListener('change', () => {
       const file = input.files?.[0];
-      if (!file) { resolve(null); return; }
+      if (!file) { resolveOnce(null); return; }
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
+      reader.onload = () => resolveOnce(reader.result as string);
+      reader.onerror = () => resolveOnce(null);
       reader.readAsDataURL(file);
     });
     // Handle cancel — file input doesn't fire 'change' on cancel,
     // so we use a focus listener as a fallback
-    window.addEventListener('focus', function onFocus() {
-      window.removeEventListener('focus', onFocus);
+    function onFocus() {
       setTimeout(() => {
-        if (!input.files?.length) resolve(null);
-        input.remove();
+        if (!input.files?.length) resolveOnce(null);
       }, 500);
-    });
+    }
+    window.addEventListener('focus', onFocus);
     document.body.appendChild(input);
     input.click();
   });
@@ -175,7 +185,7 @@ function pickImageFile(): Promise<string | null> {
   }
   await applyBackground(ctx.scene, config);
   saveBackgroundConfig(config);
-  console.log(`[V1R4] Background changed to: ${presetOrCustom}, blur: ${config.blur}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Background changed to: ${presetOrCustom}, blur: ${config.blur}`);
 };
 
 // Apply blur to current background instantly (uses image cache — no reload)
@@ -185,7 +195,7 @@ function pickImageFile(): Promise<string | null> {
     config.blur = blur;
     await applyBackground(ctx.scene, config);
     saveBackgroundConfig(config);
-    console.log(`[V1R4] Blur set to: ${blur}`);
+    if (import.meta.env.DEV) console.log(`[V1R4] Blur set to: ${blur}`);
   }
 };
 
@@ -211,27 +221,24 @@ async function saveAvatarBlob(blob: Blob): Promise<void> {
 }
 
 async function loadAvatarBlob(): Promise<Blob | null> {
-  try {
-    const db = await openAvatarDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction('avatar', 'readonly');
-      const req = tx.objectStore('avatar').get('model');
-      req.onsuccess = () => { db.close(); resolve(req.result ?? null); };
-      req.onerror = () => { db.close(); resolve(null); };
-    });
-  } catch { return null; }
+  const db = await openAvatarDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('avatar', 'readonly');
+    const req = tx.objectStore('avatar').get('model');
+    req.onsuccess = () => { db.close(); resolve(req.result ?? null); };
+    req.onerror = () => { db.close(); reject(req.error); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 }
 
 async function clearAvatarBlob(): Promise<void> {
-  try {
-    const db = await openAvatarDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction('avatar', 'readwrite');
-      tx.objectStore('avatar').delete('model');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => { db.close(); resolve(); };
-    });
-  } catch { /* ignore */ }
+  const db = await openAvatarDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('avatar', 'readwrite');
+    tx.objectStore('avatar').delete('model');
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 }
 
 function pickVRMFile(): Promise<File | null> {
@@ -240,16 +247,26 @@ function pickVRMFile(): Promise<File | null> {
     input.type = 'file';
     input.accept = '.vrm';
     input.style.display = 'none';
-    input.addEventListener('change', () => {
-      resolve(input.files?.[0] ?? null);
-    });
-    window.addEventListener('focus', function onFocus() {
+    let resolved = false;
+    const cleanup = () => {
       window.removeEventListener('focus', onFocus);
-      setTimeout(() => {
-        if (!input.files?.length) resolve(null);
-        input.remove();
-      }, 500);
+      input.remove();
+    };
+    const resolveOnce = (value: File | null) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(value);
+    };
+    input.addEventListener('change', () => {
+      resolveOnce(input.files?.[0] ?? null);
     });
+    function onFocus() {
+      setTimeout(() => {
+        if (!input.files?.length) resolveOnce(null);
+      }, 500);
+    }
+    window.addEventListener('focus', onFocus);
     document.body.appendChild(input);
     input.click();
   });
@@ -265,9 +282,9 @@ function pickVRMFile(): Promise<File | null> {
     URL.revokeObjectURL(url);
     resetIdle();
     initWind();
-    console.log(`[V1R4] Avatar loaded: ${file.name}`);
+    if (import.meta.env.DEV) console.log(`[V1R4] Avatar loaded: ${file.name}`);
   } catch (err) {
-    console.error('[V1R4] Failed to load avatar:', err);
+    if (import.meta.env.DEV) console.error('[V1R4] Failed to load avatar:', err);
   }
 };
 
@@ -277,9 +294,9 @@ function pickVRMFile(): Promise<File | null> {
     await loadAvatar(ctx.scene, '/models/avatar.vrm');
     resetIdle();
     initWind();
-    console.log('[V1R4] Avatar reset to default');
+    if (import.meta.env.DEV) console.log('[V1R4] Avatar reset to default');
   } catch (err) {
-    console.error('[V1R4] Failed to load default avatar:', err);
+    if (import.meta.env.DEV) console.error('[V1R4] Failed to load default avatar:', err);
   }
 };
 
@@ -310,12 +327,12 @@ cameraZoomSpring.pos = cameraZoomTarget; // start at saved position, no spring a
 (window as any).__V1R4_ZOOM_IN = () => {
   cameraZoomTarget = Math.min(CAMERA_MAX_ZOOM, cameraZoomTarget + 0.15);
   saveCameraState();
-  console.log(`[V1R4] Zoom: ${cameraZoomTarget.toFixed(2)}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Zoom: ${cameraZoomTarget.toFixed(2)}`);
 };
 (window as any).__V1R4_ZOOM_OUT = () => {
   cameraZoomTarget = Math.max(CAMERA_MIN_ZOOM, cameraZoomTarget - 0.15);
   saveCameraState();
-  console.log(`[V1R4] Zoom: ${cameraZoomTarget.toFixed(2)}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Zoom: ${cameraZoomTarget.toFixed(2)}`);
 };
 
 // ── Expression preview ───────────────────────────────────────────────
@@ -337,7 +354,7 @@ let previewMoodTimer: ReturnType<typeof setTimeout> | null = null;
 (window as any).__V1R4_GET_MOODS = () => getAvailableMoods();
 
 function syncToggleState(): void {
-  invoke('set_toggle_state', { waveform: getWaveformEnabled(), subtitles: getSubtitlesEnabled() });
+  invoke('set_toggle_state', { waveform: getWaveformEnabled(), subtitles: getSubtitlesEnabled() }).catch(() => {});
 }
 
 (window as any).__V1R4_TOGGLE_SUBTITLES = () => { toggleSubtitles(); syncToggleState(); };
@@ -347,12 +364,12 @@ function syncToggleState(): void {
 (window as any).__V1R4_CAMERA_UP = () => {
   cameraBaseY += 0.03;
   saveCameraState();
-  console.log(`[V1R4] Camera Y: ${cameraBaseY.toFixed(3)}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Camera Y: ${cameraBaseY.toFixed(3)}`);
 };
 (window as any).__V1R4_CAMERA_DOWN = () => {
   cameraBaseY -= 0.03;
   saveCameraState();
-  console.log(`[V1R4] Camera Y: ${cameraBaseY.toFixed(3)}`);
+  if (import.meta.env.DEV) console.log(`[V1R4] Camera Y: ${cameraBaseY.toFixed(3)}`);
 };
 
 // Scroll-to-zoom — sets target, spring handles smoothing in animate()
@@ -395,7 +412,7 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseup', (e) => {
   if (e.button === 2) {
     if (!rightDragging) {
-      invoke('show_context_menu');
+      invoke('show_context_menu').catch(() => {});
     } else {
       saveCameraState();
     }
@@ -412,9 +429,9 @@ canvas.addEventListener('mouseup', (e) => {
     try {
       await loadAvatar(ctx.scene, url);
       avatarLoaded = true;
-      console.log('[V1R4] Loaded saved avatar from IndexedDB');
+      if (import.meta.env.DEV) console.log('[V1R4] Loaded saved avatar from IndexedDB');
     } catch (err) {
-      console.warn('[V1R4] Saved avatar failed, clearing and falling back:', err);
+      if (import.meta.env.DEV) console.warn('[V1R4] Saved avatar failed, clearing and falling back:', err);
       await clearAvatarBlob();
     } finally {
       URL.revokeObjectURL(url);
@@ -423,9 +440,9 @@ canvas.addEventListener('mouseup', (e) => {
   if (!avatarLoaded) {
     try {
       await loadAvatar(ctx.scene, '/models/avatar.vrm');
-      console.log('[V1R4] Loaded default avatar');
+      if (import.meta.env.DEV) console.log('[V1R4] Loaded default avatar');
     } catch (err) {
-      console.error('[V1R4] Avatar load FAILED:', err);
+      if (import.meta.env.DEV) console.error('[V1R4] Avatar load FAILED:', err);
       // Show user-visible error — no avatar model found
       const msg = document.createElement('div');
       msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font:14px sans-serif;text-align:center;opacity:0.7;pointer-events:none;';

@@ -31,7 +31,7 @@ export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
   if (!firstChunkReceived) {
     firstChunkReceived = true;
     const elapsed = speakStartTime > 0 ? (performance.now() - speakStartTime).toFixed(0) : '?';
-    console.log(`[PERF] First audio chunk received: ${elapsed}ms from speaking start`);
+    if (import.meta.env.DEV) console.log(`[PERF] First audio chunk received: ${elapsed}ms from speaking start`);
   }
 
   // Int16 PCM → Float32

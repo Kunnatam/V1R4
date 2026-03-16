@@ -12,6 +12,7 @@ export interface SceneContext {
   composer: EffectComposer;
   clock: THREE.Clock;
   transparent: boolean;
+  dispose(): void;
 }
 
 // ── Combined color grade + vignette + film grain shader ───────────────
@@ -167,17 +168,21 @@ export function createScene(canvas: HTMLCanvasElement): SceneContext {
     return _origRender(...args);
   };
 
-  // Resize handler
-  window.addEventListener('resize', () => {
+  // Resize handler — stored so it can be removed on cleanup
+  const onResize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
     composer.setSize(w, h);
-  });
+  };
+  window.addEventListener('resize', onResize);
 
-  return { scene, camera, renderer, composer, clock, transparent: false };
+  return {
+    scene, camera, renderer, composer, clock, transparent: false,
+    dispose() { window.removeEventListener('resize', onResize); },
+  };
 }
 
 /** Access the rim light to change its color for mood */
