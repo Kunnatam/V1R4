@@ -34,24 +34,10 @@ https://github.com/user-attachments/assets/5fc1fea1-9b53-4c83-b054-1c533a7c1c5e
 ./setup.sh
 ```
 
-The setup script installs all dependencies (npm, Python venv, pip), configures Claude Code hooks, and lets you pick a voice and personality. Follow the prompts.
-
-> [!TIP]
-> After setup, you can ask Claude Code:
-> ```
-> read the README and start V1R4 for me
-> ```
-
-```bash
-server/scripts/start.sh --avatar
-```
-
-First launch downloads the Kokoro TTS model (~350MB). The avatar window appears as a transparent overlay — right-click it for options.
+Installs all dependencies, configures Claude Code hooks, and lets you pick a voice and personality. Follow the prompts.
 
 <details>
 <summary>Manual setup (without setup.sh)</summary>
-
-### 1. Install dependencies
 
 ```bash
 # Frontend + Tauri
@@ -65,39 +51,34 @@ pip install -e .
 cd ..
 ```
 
-### 2. Configure Claude Code hooks
+Configure Claude Code hooks:
 
-The avatar is driven by two hook scripts:
+- Make hooks executable: `chmod +x server/hooks/notify.sh server/hooks/status.sh`
+- Edit `~/.claude/settings.json` and merge the hooks config from `server/hooks/hooks.json.example`, replacing `/ABSOLUTE/PATH/TO/v1r4-avatar` with your actual path.
+- Copy `docs/example-claude-md.md` into `~/.claude/CLAUDE.md` to enable TTS voice output.
 
-- **`notify.sh`** — extracts `<tts>` tags from Claude's responses and sends them to the TTS server
-- **`status.sh`** — tells the avatar when Claude is thinking, using tools, or idle
+</details>
 
-**a)** Make hooks executable:
+## Start
+
 ```bash
-chmod +x server/hooks/notify.sh server/hooks/status.sh
+server/scripts/start.sh --avatar
 ```
 
-**b)** Edit `~/.claude/settings.json` and merge the hooks config from `server/hooks/hooks.json.example`, replacing `/ABSOLUTE/PATH/TO/v1r4-avatar` with your actual path.
-
-**c)** Copy `docs/example-claude-md.md` into `~/.claude/CLAUDE.md` to enable TTS voice output.
-
-### 3. Start manually
+Starts the TTS server and avatar window. First launch downloads the Kokoro TTS model (~350MB). The avatar appears as a transparent overlay — right-click it for options.
 
 ```bash
-# Start both TTS server and avatar
-server/scripts/start.sh --avatar
-
-# Or run each separately
-cd server && source .venv/bin/activate && python -m claude_voice.server  # Terminal 1
-npm run tauri dev                                                         # Terminal 2
-
 # Stop everything
 server/scripts/stop.sh
 ```
 
-</details>
+> [!TIP]
+> You can also ask Claude Code:
+> ```
+> read the README and start V1R4 for me
+> ```
 
-### Use Claude Code
+## Use
 
 Open Claude Code in any project. The avatar will:
 - Show a thinking animation when Claude is working
