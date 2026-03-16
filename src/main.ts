@@ -423,7 +423,7 @@ canvas.addEventListener('mouseup', (e) => {
 // Load avatar: check IndexedDB for saved model, fall back to default
 (async () => {
   let avatarLoaded = false;
-  const savedBlob = await loadAvatarBlob();
+  const savedBlob = await loadAvatarBlob().catch(() => null);
   if (savedBlob) {
     const url = URL.createObjectURL(savedBlob);
     try {
