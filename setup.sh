@@ -18,12 +18,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # ── Spaces in path check ──
+# Symlinks at ~/.config/claude-voice/hooks/ insulate settings.json from spaces,
+# but the symlink *targets* still contain the project path — some shells may
+# struggle resolving symlinks whose targets have spaces. Warn, don't block.
 if [[ "$SCRIPT_DIR" == *" "* ]]; then
     echo ""
-    fail "Project path contains spaces: $SCRIPT_DIR"
-    echo "  Claude Code hook commands break on paths with spaces."
-    echo "  Move the project to a path without spaces and re-run ./setup.sh"
-    exit 1
+    warn "Project path contains spaces: $SCRIPT_DIR"
+    echo "  Hook symlinks may not resolve correctly on all shells."
+    echo "  Consider moving to a path without spaces if hooks fail."
 fi
 
 # ── Phase 1: Prerequisites ──────────────────────────────────────────
@@ -410,7 +412,7 @@ HOOK_LINK_DIR="$HOME/.config/claude-voice/hooks"
 mkdir -p "$HOOK_LINK_DIR"
 ln -sf "$SCRIPT_DIR/server/hooks/notify.sh" "$HOOK_LINK_DIR/notify.sh"
 ln -sf "$SCRIPT_DIR/server/hooks/status.sh" "$HOOK_LINK_DIR/status.sh"
-ok "Hook symlinks created in ~/.config/claude-voice/hooks/"
+ok "Hook symlinks created in $HOOK_LINK_DIR/"
 
 NOTIFY_PATH="$HOOK_LINK_DIR/notify.sh"
 STATUS_PATH="$HOOK_LINK_DIR/status.sh"

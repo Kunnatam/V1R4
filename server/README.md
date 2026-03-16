@@ -38,15 +38,9 @@ curl -X POST http://127.0.0.1:5111/speak -H 'Content-Type: application/json' -d 
 
 Run `./setup.sh` from the project root — it auto-merges hook entries into `~/.claude/settings.json`.
 
-To register hooks manually, add to `~/.claude/settings.json`:
-```json
-{
-  "hooks": {
-    "Stop": [{ "hooks": [{ "type": "command", "command": "/path/to/v1r4/server/hooks/notify.sh" }, { "type": "command", "command": "/path/to/v1r4/server/hooks/status.sh" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "/path/to/v1r4/server/hooks/status.sh" }] }]
-  }
-}
-```
+To register hooks manually, see `~/.claude/settings.json`. The setup script registers
+`Stop`, `UserPromptSubmit`, `PreToolUse`, `SubagentStart`, `PermissionRequest`, and
+`Notification` hooks — check the generated file for the full structure.
 
 ## Endpoints
 
