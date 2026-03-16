@@ -92,13 +92,11 @@ except (json.JSONDecodeError, IOError) as e:
 hooks = settings.get("hooks", {})
 
 def is_v1r4(entry):
-    v1r4_scripts = ("notify.sh", "status.sh")
     for h in entry.get("hooks", []):
-        cmd = h.get("command", "")
-        # Match on script filename (reliable) or directory name (fallback)
-        if any(cmd.rstrip().endswith(f"server/hooks/{s}") for s in v1r4_scripts):
-            return True
-        if "v1r4" in cmd.lower():
+        cmd = h.get("command", "").strip().strip('"')
+        low = cmd.lower()
+        # Match V1R4 hooks by path patterns (current and legacy installs)
+        if "v1r4" in low or "claude-voice" in low or "claude_voice" in low:
             return True
     return False
 
@@ -157,13 +155,11 @@ except (json.JSONDecodeError, IOError) as e:
 hooks = settings.get("hooks", {})
 
 def is_v1r4(entry):
-    v1r4_scripts = ("notify.sh", "status.sh")
     for h in entry.get("hooks", []):
-        cmd = h.get("command", "")
-        # Match on script filename (reliable) or directory name (fallback)
-        if any(cmd.rstrip().endswith(f"server/hooks/{s}") for s in v1r4_scripts):
-            return True
-        if "v1r4" in cmd.lower():
+        cmd = h.get("command", "").strip().strip('"')
+        low = cmd.lower()
+        # Match V1R4 hooks by path patterns (current and legacy installs)
+        if "v1r4" in low or "claude-voice" in low or "claude_voice" in low:
             return True
     return False
 
