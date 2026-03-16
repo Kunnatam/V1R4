@@ -39,7 +39,7 @@ echo ""
 echo -e "${BOLD}Stopping processes...${NC}"
 
 if [ -f "$SCRIPT_DIR/server/scripts/stop.sh" ]; then
-    bash "$SCRIPT_DIR/server/scripts/stop.sh" 2>/dev/null && true
+    bash "$SCRIPT_DIR/server/scripts/stop.sh" 2>/dev/null || true
     ok "stop.sh executed"
 else
     warn "stop.sh not found — skipping"
@@ -75,30 +75,52 @@ if [ -f "$SETTINGS_FILE" ]; then
         warn "Manually edit ~/.claude/settings.json and remove entries containing 'v1r4'"
         SKIPPED+=("Hook removal (no Python)")
     else
-        # Show what will be removed
-        V1R4_HOOKS=$("$PYTHON_CMD" - "$SETTINGS_FILE" << 'PYEOF'
-import json, sys
+        # Detect V1R4 hooks
+        V1R4_HOOKS=$("$PYTHON_CMD" - "$SETTINGS_FILE" "detect" << 'PYEOF'
+import json, sys, os, tempfile
 
 settings_path = sys.argv[1]
-with open(settings_path) as f:
-    settings = json.load(f)
+mode = sys.argv[2]  # "detect" or "remove"
+
+try:
+    with open(settings_path) as f:
+        settings = json.load(f)
+except (json.JSONDecodeError, IOError) as e:
+    print(f"ERROR: Cannot parse {settings_path}: {e}", file=sys.stderr)
+    sys.exit(1)
 
 hooks = settings.get("hooks", {})
-found = []
-for event_name, entries in hooks.items():
-    for entry in entries:
-        for h in entry.get("hooks", []):
-            cmd = h.get("command", "")
-            if "v1r4" in cmd.lower():
-                found.append(f"  {event_name}: {cmd}")
-                break
 
-if found:
-    print("\n".join(found))
-else:
-    print("")
+def is_v1r4(entry):
+    return any("v1r4" in h.get("command", "").lower() for h in entry.get("hooks", []))
+
+if mode == "detect":
+    found = []
+    for event_name, entries in hooks.items():
+        for entry in entries:
+            if is_v1r4(entry):
+                cmd = next(h["command"] for h in entry.get("hooks", []) if "v1r4" in h.get("command", "").lower())
+                found.append(f"  {event_name}: {cmd}")
+    print("\n".join(found) if found else "")
+
+elif mode == "remove":
+    cleaned = {}
+    for event_name, entries in hooks.items():
+        kept = [e for e in entries if not is_v1r4(e)]
+        if kept:
+            cleaned[event_name] = kept
+    if cleaned:
+        settings["hooks"] = cleaned
+    else:
+        settings.pop("hooks", None)
+    # Atomic write: temp file then replace
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(settings_path), suffix=".tmp")
+    with os.fdopen(fd, "w") as f:
+        json.dump(settings, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, settings_path)
 PYEOF
-        )
+        ) || true
 
         if [ -n "$V1R4_HOOKS" ]; then
             echo ""
@@ -111,39 +133,47 @@ PYEOF
                 cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
                 ok "Backed up to settings.json.bak"
 
-                "$PYTHON_CMD" - "$SETTINGS_FILE" << 'PYEOF'
-import json, sys
+                if ! "$PYTHON_CMD" - "$SETTINGS_FILE" "remove" << 'PYEOF'; then
+import json, sys, os, tempfile
 
 settings_path = sys.argv[1]
-with open(settings_path) as f:
-    settings = json.load(f)
+mode = sys.argv[2]
+
+try:
+    with open(settings_path) as f:
+        settings = json.load(f)
+except (json.JSONDecodeError, IOError) as e:
+    print(f"ERROR: Cannot parse {settings_path}: {e}", file=sys.stderr)
+    sys.exit(1)
 
 hooks = settings.get("hooks", {})
-cleaned_hooks = {}
 
+def is_v1r4(entry):
+    return any("v1r4" in h.get("command", "").lower() for h in entry.get("hooks", []))
+
+cleaned = {}
 for event_name, entries in hooks.items():
-    kept = []
-    for entry in entries:
-        has_v1r4 = any(
-            "v1r4" in h.get("command", "").lower()
-            for h in entry.get("hooks", [])
-        )
-        if not has_v1r4:
-            kept.append(entry)
+    kept = [e for e in entries if not is_v1r4(e)]
     if kept:
-        cleaned_hooks[event_name] = kept
-
-if cleaned_hooks:
-    settings["hooks"] = cleaned_hooks
+        cleaned[event_name] = kept
+if cleaned:
+    settings["hooks"] = cleaned
 else:
     settings.pop("hooks", None)
 
-with open(settings_path, "w") as f:
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(settings_path), suffix=".tmp")
+with os.fdopen(fd, "w") as f:
     json.dump(settings, f, indent=2)
     f.write("\n")
+os.replace(tmp, settings_path)
 PYEOF
-                ok "V1R4 hooks removed from ~/.claude/settings.json"
-                REMOVED+=("Claude Code hooks")
+                    fail "Failed to remove hooks — restored from backup"
+                    cp "${SETTINGS_FILE}.bak" "$SETTINGS_FILE"
+                    SKIPPED+=("Hook removal (error)")
+                else
+                    ok "V1R4 hooks removed from ~/.claude/settings.json"
+                    REMOVED+=("Claude Code hooks")
+                fi
             else
                 warn "Hooks kept — skipping"
                 SKIPPED+=("Hook removal (user declined)")
@@ -177,6 +207,13 @@ if [ -f "$CLAUDE_MD" ]; then
         echo ""
         read -rp "  Remove V1R4 section from CLAUDE.md? (y/n) > " REMOVE_MD
         if [[ "$REMOVE_MD" == "y" || "$REMOVE_MD" == "Y" ]]; then
+            # Verify end marker exists
+            if ! grep -q "$V1R4_END" "$CLAUDE_MD" 2>/dev/null; then
+                warn "End marker missing — skipping to avoid data loss"
+                SKIPPED+=("CLAUDE.md cleanup (missing end marker)")
+            else
+            # Back up before modifying
+            cp "$CLAUDE_MD" "${CLAUDE_MD}.bak"
             # Remove the V1R4 section (markers inclusive)
             awk -v start="$V1R4_START" -v end="$V1R4_END" '
                 $0 ~ start { skip=1; next }
@@ -202,6 +239,7 @@ if [ -f "$CLAUDE_MD" ]; then
                 mv "${CLAUDE_MD}.tmp" "$CLAUDE_MD"
                 ok "V1R4 section removed — other content preserved"
                 REMOVED+=("CLAUDE.md V1R4 section")
+            fi
             fi
         else
             warn "CLAUDE.md kept — skipping"
