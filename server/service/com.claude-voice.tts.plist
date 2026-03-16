@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claude-voice.tts</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__VENV_PATH__/bin/python</string>
+        <string>-m</string>
+        <string>claude_voice.server</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_PATH__</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__VENV_PATH__/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/claude-voice-tts.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/claude-voice-tts.log</string>
+</dict>
+</plist>

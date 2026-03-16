@@ -1,0 +1,61 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/status.sh" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/status.sh" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/status.sh" },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/status.sh" }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" }
+        ]
+      },
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" }
+        ]
+      },
+      {
+        "matcher": "elicitation_dialog",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/v1r4-avatar/server/hooks/notify.sh" }
+        ]
+      }
+    ]
+  }
+}
