@@ -289,7 +289,7 @@ function pickVRMFile(): Promise<File | null> {
 };
 
 (window as any).__V1R4_RESET_AVATAR = async () => {
-  await clearAvatarBlob();
+  await clearAvatarBlob().catch(() => {});
   try {
     await loadAvatar(ctx.scene, '/models/avatar.vrm');
     resetIdle();
@@ -432,7 +432,7 @@ canvas.addEventListener('mouseup', (e) => {
       if (import.meta.env.DEV) console.log('[V1R4] Loaded saved avatar from IndexedDB');
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[V1R4] Saved avatar failed, clearing and falling back:', err);
-      await clearAvatarBlob();
+      await clearAvatarBlob().catch(() => {});
     } finally {
       URL.revokeObjectURL(url);
     }
