@@ -147,25 +147,31 @@ flowchart TD
 
 ## Uninstall
 
+```bash
+./uninstall.sh
+```
+
+Interactive script that removes hooks, config, cache, and service files. Shows what will be removed and asks before each destructive step. The project folder itself is not deleted.
+
 > [!TIP]
-> You can ask Claude Code:
+> You can also ask Claude Code:
 > ```
 > read the uninstall section in the README and remove V1R4 from my system
 > ```
 
+<details>
+<summary>Manual uninstall (without uninstall.sh)</summary>
+
 ### 1. Stop running processes
 
 ```bash
-# Stop TTS server and avatar
 server/scripts/stop.sh
-
-# Or manually
 pkill -f "claude_voice.server" 2>/dev/null
 ```
 
 ### 2. Remove Claude Code hooks
 
-Edit `~/.claude/settings.json` and delete the `hooks` entries that reference `v1r4-avatar` (the ones pointing to `notify.sh` and `status.sh`). If V1R4 was your only hook user, you can remove the entire `"hooks"` key.
+Edit `~/.claude/settings.json` and delete the `hooks` entries that reference `v1r4` (the ones pointing to `notify.sh` and `status.sh`). If V1R4 was your only hook user, you can remove the entire `"hooks"` key.
 
 ### 3. Clean up TTS personality from CLAUDE.md
 
@@ -198,19 +204,36 @@ rm -rf "${TMPDIR:-/tmp}/v1r4-$(id -u)"
 server/scripts/uninstall.sh
 ```
 
-### 6. Remove Kokoro TTS model (optional, ~350MB)
-
-The Kokoro model is cached by HuggingFace and shared across any project that uses it. Only remove if no other project needs it:
+### 6. Remove WebView application data
 
 ```bash
+# macOS
+rm -rf ~/Library/Application\ Support/com.v1r4.avatar
+
+# Linux
+rm -rf ~/.config/v1r4-avatar ~/.local/share/v1r4-avatar
+```
+
+### 7. Remove large build artifacts (optional)
+
+```bash
+# Python venv (~5-6GB)
+rm -rf server/.venv
+
+# Rust build cache (~3GB)
+rm -rf target
+
+# Kokoro TTS model (~350MB, shared by HuggingFace — only remove if no other project uses it)
 rm -rf ~/.cache/huggingface/hub/models--hexgrad--Kokoro-82M
 ```
 
-### 7. Delete the project
+### 8. Delete the project
 
 ```bash
 rm -rf /path/to/v1r4-avatar
 ```
+
+</details>
 
 ## Troubleshooting
 
