@@ -7,6 +7,8 @@ Reading long Claude Code outputs gets exhausting — walls of text, dry eyes, no
 
 Built with [Claude Code](https://claude.ai/code) (Opus).
 
+https://github.com/user-attachments/assets/5fc1fea1-9b53-4c83-b054-1c533a7c1c5e
+
 ## Features
 
 - **Voice** — speaks Claude's responses aloud via local [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) TTS (no cloud, no API keys)
@@ -128,7 +130,9 @@ Open Claude Code in any project. The avatar will:
 
 ## How it works
 
-Claude's responses include a hidden `<tts>` tag with a spoken summary. The hook scripts extract it and send it to the local TTS server, which streams audio to the avatar.
+Claude's responses include a hidden `<tts>` tag with a spoken summary — wrapped in an HTML comment so it's invisible in the CLI terminal. The hook scripts extract it and send it to the local TTS server, which streams audio to the avatar.
+
+<img src="https://github.com/user-attachments/assets/9ed89623-e388-4920-aaaf-e0b6a470833e" alt="TTS tag example" width="360"> 
 
 ```mermaid
 flowchart TD
