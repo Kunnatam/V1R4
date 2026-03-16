@@ -17,11 +17,11 @@ export interface BackgroundConfig {
 
 const DEFAULT_CONFIG: BackgroundConfig = {
   type: 'image',
-  imagePath: '/backgrounds/neon-room.png',
+  imagePath: '/backgrounds/spooky-castle.png',
   blur: 0,
   vignette: true,
-  tint: '#0a0010',
-  tintOpacity: 0.08,
+  tint: '#0a0020',
+  tintOpacity: 0.1,
 };
 
 /** Create a radial gradient texture */

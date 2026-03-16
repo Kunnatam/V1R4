@@ -92,8 +92,9 @@ audio_broadcaster = StatusBroadcaster()
 
 
 def create_pipeline() -> tuple[SpeakPipeline, AlertCache]:
-    load_dotenv()
-    voice = os.getenv("TTS_VOICE", "bf_isabella")
+    _env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    load_dotenv(_env_path)
+    voice = os.getenv("TTS_VOICE", "af_heart")
     speed = float(os.getenv("TTS_SPEED", "1.1"))
     engine = TTSEngine(voice=voice, speed=speed)
     player = AudioPlayer()
@@ -293,7 +294,7 @@ app = create_app()
 def main():
     import logging
     import uvicorn
-    load_dotenv()
+    load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
     # Always show perf timing logs
     perf_logger = logging.getLogger("claude_voice.perf")
     perf_logger.setLevel(logging.INFO)
