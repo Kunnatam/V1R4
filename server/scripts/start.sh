@@ -50,10 +50,18 @@ if [ ! -f "$SERVER_PIDFILE" ]; then
     echo $! > "$SERVER_PIDFILE"
 
     # Wait for server to be ready
+    SERVER_PID=$(cat "$SERVER_PIDFILE")
     echo -n "Starting TTS server..."
     SERVER_READY=false
     for i in $(seq 1 30); do
-        if curl -s http://127.0.0.1:5111/health > /dev/null 2>&1; then
+        # Check if server process is still alive
+        if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo ""
+            echo -e "\033[0;31m✗\033[0m TTS server crashed on startup — check logs: tail -20 $LOGFILE"
+            rm -f "$SERVER_PIDFILE"
+            break
+        fi
+        if curl -s --max-time 2 http://127.0.0.1:5111/health > /dev/null 2>&1; then
             SERVER_READY=true
             break
         fi
@@ -63,9 +71,9 @@ if [ ! -f "$SERVER_PIDFILE" ]; then
     echo ""
 
     if [ "$SERVER_READY" = true ]; then
-        echo -e "\033[0;32m✓\033[0m TTS server is running (PID $(cat "$SERVER_PIDFILE"))"
-    else
-        echo -e "\033[1;33m!\033[0m TTS server started (PID $(cat "$SERVER_PIDFILE")) but not responding yet"
+        echo -e "\033[0;32m✓\033[0m TTS server is running (PID $SERVER_PID)"
+    elif kill -0 "$SERVER_PID" 2>/dev/null; then
+        echo -e "\033[1;33m!\033[0m TTS server started (PID $SERVER_PID) but not responding yet"
         echo "  It may still be loading the Kokoro model (~30s on first launch)"
     fi
 fi
