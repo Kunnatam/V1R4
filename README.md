@@ -1,5 +1,8 @@
 # V1R4
 
+> [!NOTE]
+> This project is in early development. Contributions, suggestions, and PRs are welcome.
+
 > [!CAUTION]
 > Never blindly install AI projects from the internet. Always review the source code and understand what it does before running it on your machine. Proceed at your own risk.
 
@@ -98,7 +101,7 @@ Open Claude Code in any project. The avatar will:
 
 ## Customization
 
-> [!NOTE]
+> [!TIP]
 > Want shorter TTS responses, a different personality, or to change how Claude interacts? You can ask Claude Code directly — it can edit your `~/.claude/CLAUDE.md` for you.
 
 - **Voice personality:** Edit `~/.claude/CLAUDE.md` — the avatar speaks whatever style you define (see `docs/example-claude-md.md`)
