@@ -1,14 +1,11 @@
 import logging
 import threading
 
-import numpy as np
-
 logger = logging.getLogger(__name__)
 
 
 class AudioPlayer:
     def __init__(self):
-        self._lock = threading.Lock()
         self.volume = 1.0  # 0.0 = muted, 1.0 = full volume
         self._stop_event = threading.Event()
 
