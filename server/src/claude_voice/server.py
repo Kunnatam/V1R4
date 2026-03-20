@@ -1,7 +1,10 @@
+import base64
 import json
 import logging
 import os
 import time
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("claude_voice.perf")
@@ -180,10 +183,14 @@ def create_app(custom_lifespan=None) -> FastAPI:
         text, audio = result
         def play_alert():
             app.state.pipeline._start_speaking()
-            def on_amplitude(level):
-                app.state.pipeline._broadcast({"amplitude": round(float(level), 3)})
             try:
-                app.state.pipeline.player.play(audio, SAMPLE_RATE, on_amplitude=on_amplitude)
+                if not app.state.muted:
+                    pcm_int16 = (audio * 32767).astype(np.int16)
+                    app.state.pipeline._broadcast_audio({
+                        "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
+                        "sr": SAMPLE_RATE
+                    })
+                app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
             finally:
                 app.state.pipeline._stop_speaking()
         background_tasks.add_task(play_alert)
@@ -212,10 +219,14 @@ def create_app(custom_lifespan=None) -> FastAPI:
 
                 def play_cue():
                     app.state.pipeline._start_speaking()
-                    def on_amplitude(level):
-                        app.state.pipeline._broadcast({"amplitude": round(float(level), 3)})
                     try:
-                        app.state.pipeline.player.play(audio, SAMPLE_RATE, on_amplitude=on_amplitude)
+                        if not app.state.muted:
+                            pcm_int16 = (audio * 32767).astype(np.int16)
+                            app.state.pipeline._broadcast_audio({
+                                "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
+                                "sr": SAMPLE_RATE
+                            })
+                        app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
                     finally:
                         app.state.pipeline._stop_speaking()
                 background_tasks.add_task(play_cue)
@@ -247,7 +258,7 @@ def create_app(custom_lifespan=None) -> FastAPI:
     @app.post("/mute")
     def set_mute(req: MuteRequest):
         app.state.muted = req.muted
-        app.state.pipeline.player.volume = 0.0 if req.muted else 1.0
+        app.state.pipeline._muted = req.muted
         if req.muted:
             app.state.pipeline.player.stop()
         return {"muted": req.muted}
