@@ -27,7 +27,8 @@ After:
 - Remove `sounddevice` import and all speaker playback
 - Remove the amplitude emitter thread and clock-sync logic (`amp_emitter`, `shared_lock`, `samples_written`, `running_peak`, etc.)
 - Remove `play()`, `play_queued()`, `_play_with_retry()`, `_play_with_amplitude()` methods
-- Simplify `stream()` context manager — no longer opens a `sounddevice.OutputStream`, just provides a `write()` that forwards PCM chunks to the broadcast callback
+- Remove `stream()` context manager — pipeline broadcasts PCM directly without going through the player
+- Add `interruptible_sleep()` using `threading.Event` so `/stop` can interrupt sleeping speak/cue threads
 - Keep volume as a multiplier on PCM data before broadcasting (for mute support)
 - `numpy` stays — still needed for PCM format conversion (int16 ↔ float32)
 
