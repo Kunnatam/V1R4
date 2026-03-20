@@ -135,6 +135,8 @@ class SpeakPipeline:
 
         self._start_speaking()
         self._broadcast({"text": text, "duration": 0})
+        total_samples = 0
+        broadcast_start = time.perf_counter()
 
         try:
             # Broadcast lead-in immediately
@@ -146,6 +148,7 @@ class SpeakPipeline:
                     "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
                     "sr": SAMPLE_RATE
                 })
+                total_samples += len(leadin_audio)
 
             while True:
                 try:
@@ -174,6 +177,14 @@ class SpeakPipeline:
                         "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
                         "sr": SAMPLE_RATE
                     })
+                total_samples += len(chunk)
+
+            # Wait for avatar to finish playing all broadcast audio
+            total_duration = total_samples / SAMPLE_RATE
+            elapsed = time.perf_counter() - broadcast_start
+            remaining = total_duration - elapsed
+            if remaining > 0:
+                self.player.interruptible_sleep(remaining)
         finally:
             self._stop_speaking()
             e2e_elapsed = time.perf_counter() - e2e_start
