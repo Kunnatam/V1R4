@@ -54,6 +54,7 @@ class SpeakPipeline:
         self.audio_broadcaster = None
         self._speaking_count = 0
         self._speaking_lock = threading.Lock()
+        self._muted = False
 
     def _broadcast(self, data: dict):
         if self.broadcaster:
@@ -85,7 +86,7 @@ class SpeakPipeline:
         return self._speaking_count > 0
 
     def speak(self, text: str):
-        """Generate and play audio for text (full batch mode)."""
+        """Generate and broadcast audio for text (full batch mode)."""
         e2e_start = time.perf_counter()
         audio, sr = self.tts.generate(text)
         if len(audio) > 0:
@@ -96,27 +97,26 @@ class SpeakPipeline:
             self._start_speaking()
             self._broadcast({"text": text, "duration": round(duration, 2)})
 
-            pcm_int16 = (audio * 32767).astype(np.int16)
-            self._broadcast_audio({
-                "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                "sr": sr
-            })
+            # Broadcast PCM to avatar for playback (respects mute)
+            if not self._muted:
+                pcm_int16 = (audio * 32767).astype(np.int16)
+                self._broadcast_audio({
+                    "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
+                    "sr": sr
+                })
 
-            def on_amplitude(level):
-                self._broadcast({"amplitude": round(float(level), 3)})
+            # Interruptible wait so /stop can cancel
+            self.player.interruptible_sleep(duration)
+            self._stop_speaking()
 
-            try:
-                self.player.play(audio, sr, on_amplitude=on_amplitude)
-            finally:
-                self._stop_speaking()
-                e2e_elapsed = time.perf_counter() - e2e_start
-                perf_logger.info(
-                    "Pipeline full e2e: %.0fms total, text: \"%s\"",
-                    e2e_elapsed * 1000, text[:80]
-                )
+            e2e_elapsed = time.perf_counter() - e2e_start
+            perf_logger.info(
+                "Pipeline full e2e: %.0fms total, text: \"%s\"",
+                e2e_elapsed * 1000, text[:80]
+            )
 
     def speak_chunked(self, text: str, leadin_audio: np.ndarray | None = None):
-        """Generate and play audio chunk by chunk using a continuous stream."""
+        """Generate and broadcast audio chunk by chunk."""
         e2e_start = time.perf_counter()
         first_chunk_time = None
         chunk_queue: queue.Queue[np.ndarray | None] = queue.Queue(maxsize=2)
@@ -135,49 +135,45 @@ class SpeakPipeline:
 
         self._start_speaking()
         self._broadcast({"text": text, "duration": 0})
-        played_any = False
-
-        def on_amplitude(level):
-            self._broadcast({"amplitude": round(float(level), 3)})
 
         try:
-            with self.player.stream(SAMPLE_RATE) as write:
-                # Play lead-in immediately while generator works
-                if leadin_audio is not None and len(leadin_audio) > 0:
-                    perf_logger.info("Pipeline lead-in: playing %d samples (%.0fms)",
-                                     len(leadin_audio), len(leadin_audio) / SAMPLE_RATE * 1000)
-                    write(leadin_audio, on_amplitude=on_amplitude)
-                    played_any = True
+            # Broadcast lead-in immediately
+            if leadin_audio is not None and len(leadin_audio) > 0 and not self._muted:
+                perf_logger.info("Pipeline lead-in: %d samples (%.0fms)",
+                                 len(leadin_audio), len(leadin_audio) / SAMPLE_RATE * 1000)
+                pcm_int16 = (leadin_audio * 32767).astype(np.int16)
+                self._broadcast_audio({
+                    "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
+                    "sr": SAMPLE_RATE
+                })
 
-                while True:
-                    try:
-                        chunk = chunk_queue.get(timeout=30)  # 30s timeout per chunk
-                    except queue.Empty:
-                        logger.warning("TTS chunk generation timed out (30s)")
-                        break
-                    if chunk is None:
-                        break
-                    if len(chunk) == 0:
-                        continue
+            while True:
+                try:
+                    chunk = chunk_queue.get(timeout=30)
+                except queue.Empty:
+                    logger.warning("TTS chunk generation timed out (30s)")
+                    break
+                if chunk is None:
+                    break
+                if len(chunk) == 0:
+                    continue
 
-                    if not first_chunk_time:
-                        first_chunk_time = time.perf_counter() - e2e_start
-                        perf_logger.info(
-                            "Pipeline chunked first audio: %.0fms, text: \"%s\"",
-                            first_chunk_time * 1000, text[:80]
-                        )
-                    played_any = True
+                if not first_chunk_time:
+                    first_chunk_time = time.perf_counter() - e2e_start
+                    perf_logger.info(
+                        "Pipeline chunked first audio: %.0fms, text: \"%s\"",
+                        first_chunk_time * 1000, text[:80]
+                    )
 
-                    if DEBUG_DUMP:
-                        self._dump_wav(chunk, SAMPLE_RATE, text)
+                if DEBUG_DUMP:
+                    self._dump_wav(chunk, SAMPLE_RATE, text)
 
+                if not self._muted:
                     pcm_int16 = (chunk * 32767).astype(np.int16)
                     self._broadcast_audio({
                         "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
                         "sr": SAMPLE_RATE
                     })
-
-                    write(chunk, on_amplitude=on_amplitude)
         finally:
             self._stop_speaking()
             e2e_elapsed = time.perf_counter() - e2e_start
