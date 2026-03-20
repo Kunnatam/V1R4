@@ -1,6 +1,6 @@
-// Web Audio API amplitude analysis (muted — backend handles playback)
-// Routes PCM through AnalyserNode without outputting to speakers,
-// so we get synced amplitude for lipsync without double audio.
+// Web Audio API playback + amplitude analysis
+// Receives PCM chunks from TTS server via WebSocket,
+// plays through speakers and analyzes amplitude for lipsync.
 
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -15,7 +15,7 @@ export function initAudioPlayer(): void {
   audioCtx = new AudioContext();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = TIME_DOMAIN_SIZE;
-  // NOT connected to destination — analysis only, no audio output
+  analyser.connect(audioCtx.destination);
   nextPlayTime = 0;
 }
 
@@ -67,6 +67,17 @@ export function getPlaybackAmplitude(): number {
 }
 
 export function resetAudioPlayback(): void {
+  // Only reset if all queued audio has finished playing
+  if (audioCtx && nextPlayTime > 0 && audioCtx.currentTime < nextPlayTime) {
+    return; // audio still playing — let it drain
+  }
+  nextPlayTime = 0;
+  firstChunkReceived = false;
+  speakStartTime = 0;
+}
+
+export function forceResetAudioPlayback(): void {
+  // Force stop — used by /stop endpoint
   nextPlayTime = 0;
   firstChunkReceived = false;
   speakStartTime = 0;
