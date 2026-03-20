@@ -3,7 +3,7 @@ import { AvatarState } from './state';
 export type StatusMessage =
   | { type: 'state'; value: 'thinking' | 'idle' }
   | { type: 'speaking'; value: boolean }
-  | { type: 'amplitude'; value: number }
+
   | { type: 'mood'; value: string }
   | { type: 'toolMood'; value: string }
   | { type: 'text'; value: string; duration: number };
@@ -19,7 +19,7 @@ export function parseStatusMessage(raw: string): StatusMessage | null {
   if ('state' in data) return { type: 'state', value: data.state as 'thinking' | 'idle' };
   if ('text' in data) return { type: 'text', value: data.text as string, duration: (data.duration as number) || 0 };
   if ('speaking' in data) return { type: 'speaking', value: data.speaking as boolean };
-  if ('amplitude' in data) return { type: 'amplitude', value: data.amplitude as number };
+
   if ('mood' in data) return { type: 'mood', value: data.mood as string };
   if ('tool_mood' in data) return { type: 'toolMood', value: data.tool_mood as string };
 
@@ -68,9 +68,7 @@ export function connectStatus(
         case 'speaking':
           // Handled by onMessage callback (main.ts) with debounce delay
           break;
-        case 'amplitude':
-          state.amplitude = msg.value;
-          break;
+
         case 'mood':
           state.mood = msg.value as AvatarState['mood'];
           break;

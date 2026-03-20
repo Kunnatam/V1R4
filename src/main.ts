@@ -11,7 +11,8 @@ import { initWind, updateWind } from './wind';
 import { initOverlayEffects, updateOverlayEffects, setSubtitle, clearSubtitle, toggleSubtitles, toggleWaveform, getWaveformEnabled, getSubtitlesEnabled } from './overlay-effects';
 import { createSpring, springDamped, SpringState } from './spring';
 import { applyBackground, loadBackgroundConfig, saveBackgroundConfig, BACKGROUND_PRESETS, BackgroundConfig } from './background';
-import { initAudioPlayer, queueAudioChunk, getPlaybackAmplitude, resetAudioPlayback, notifySpeakStart } from './audio-player';
+import { initAudioPlayer, queueAudioChunk, getPlaybackAmplitude, resetAudioPlayback, forceResetAudioPlayback, notifySpeakStart } from './audio-player';
+void forceResetAudioPlayback; // reserved — wired in Task 6 end-to-end
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import * as THREE from 'three';
@@ -97,7 +98,6 @@ function onStatusMessage(msg: StatusMessage): void {
         speakingStopTimer = setTimeout(() => {
           state.speaking = false;
           state.mode = 'idle';
-          state.amplitude = 0;
           resetLipSync();
           resetAudioPlayback();
           clearSubtitle();
@@ -506,8 +506,7 @@ function animate(): void {
   cameraTime += dt;
 
   // Amplitude: prefer local playback (synced to audio) over WebSocket (delayed)
-  const localAmp = getPlaybackAmplitude();
-  const ampSource = localAmp > 0.005 ? localAmp : state.amplitude;
+  const ampSource = getPlaybackAmplitude();
   ampSpring = springDamped(ampSpring, ampSource, AMP_HL, dt);
   const smoothAmp = Math.max(0, ampSpring.pos);
 
