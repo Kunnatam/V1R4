@@ -11,23 +11,26 @@ let speakStartTime = 0;
 const TIME_DOMAIN_SIZE = 256;
 const timeDomainData = new Float32Array(TIME_DOMAIN_SIZE);
 
-export function initAudioPlayer(): void {
+function createAudioContext(): void {
+  if (audioCtx) {
+    try { audioCtx.close(); } catch { /* ignore */ }
+  }
   audioCtx = new AudioContext();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = TIME_DOMAIN_SIZE;
   analyser.connect(audioCtx.destination);
   nextPlayTime = 0;
+}
 
-  // Resume AudioContext after lid close/open or tab visibility change
+export function initAudioPlayer(): void {
+  createAudioContext();
+
+  // Recreate AudioContext after lid close/open — resume() alone is unreliable on macOS WKWebView
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && audioCtx?.state === 'suspended') {
-      audioCtx.resume();
+    if (document.visibilityState === 'visible') {
+      createAudioContext();
     }
   });
-  // Also resume on any click — fallback for stubborn WebView suspension
-  window.addEventListener('mousedown', () => {
-    if (audioCtx?.state === 'suspended') audioCtx.resume();
-  }, { once: false });
 }
 
 export function notifySpeakStart(): void {
@@ -37,7 +40,9 @@ export function notifySpeakStart(): void {
 
 export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
   if (!audioCtx || !analyser) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioCtx.state === 'suspended' || audioCtx.state === 'closed') {
+    createAudioContext();
+  }
 
   if (!firstChunkReceived) {
     firstChunkReceived = true;
