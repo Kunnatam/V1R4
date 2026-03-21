@@ -25,13 +25,17 @@ function createAudioContext(): void {
 export function initAudioPlayer(): void {
   createAudioContext();
 
-  // Resume or recreate AudioContext after lid close/open
+  // Recreate AudioContext after screen off / lid close
+  // resume() is unreliable on macOS WKWebView — context reports "running" but output is dead
+  let lastVisible = Date.now();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && audioCtx) {
-      if (audioCtx.state === 'closed') {
+    if (document.visibilityState === 'hidden') {
+      lastVisible = Date.now();
+    } else if (document.visibilityState === 'visible') {
+      const away = Date.now() - lastVisible;
+      // Only recreate if away for >2s (screen off / lid close, not brief focus change)
+      if (away > 2000) {
         createAudioContext();
-      } else if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
       }
     }
   });
