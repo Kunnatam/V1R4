@@ -64,6 +64,14 @@ class SpeakPipeline:
         if self.audio_broadcaster:
             _fire_async(self.audio_broadcaster.broadcast(data))
 
+    def _broadcast_pcm(self, audio: np.ndarray, sr: int):
+        """Encode float32 PCM as base64 and broadcast to avatar."""
+        self._broadcast_audio({
+            "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
+            "sr": sr,
+            "fmt": "f32"
+        })
+
     def _start_speaking(self):
         """Increment speaking counter and always broadcast speaking state.
 
@@ -99,11 +107,7 @@ class SpeakPipeline:
 
             # Broadcast PCM to avatar for playback (respects mute)
             if not self._muted:
-                self._broadcast_audio({
-                    "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
-                    "sr": sr,
-                    "fmt": "f32"
-                })
+                self._broadcast_pcm(audio, sr)
 
             # Interruptible wait so /stop can cancel
             self.player.interruptible_sleep(duration)
@@ -143,11 +147,7 @@ class SpeakPipeline:
             if leadin_audio is not None and len(leadin_audio) > 0 and not self._muted:
                 perf_logger.info("Pipeline lead-in: %d samples (%.0fms)",
                                  len(leadin_audio), len(leadin_audio) / SAMPLE_RATE * 1000)
-                self._broadcast_audio({
-                    "pcm": base64.b64encode(leadin_audio.astype(np.float32).tobytes()).decode(),
-                    "sr": SAMPLE_RATE,
-                    "fmt": "f32"
-                })
+                self._broadcast_pcm(leadin_audio, SAMPLE_RATE)
                 total_samples += len(leadin_audio)
 
             while True:

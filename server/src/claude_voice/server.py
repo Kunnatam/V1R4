@@ -1,10 +1,7 @@
-import base64
 import json
 import logging
 import os
 import time
-
-import numpy as np
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("claude_voice.perf")
@@ -185,11 +182,7 @@ def create_app(custom_lifespan=None) -> FastAPI:
             app.state.pipeline._start_speaking()
             try:
                 if not app.state.muted:
-                    app.state.pipeline._broadcast_audio({
-                        "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
-                        "sr": SAMPLE_RATE,
-                        "fmt": "f32"
-                    })
+                    app.state.pipeline._broadcast_pcm(audio, SAMPLE_RATE)
                 app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
             finally:
                 app.state.pipeline._stop_speaking()
@@ -221,11 +214,7 @@ def create_app(custom_lifespan=None) -> FastAPI:
                     app.state.pipeline._start_speaking()
                     try:
                         if not app.state.muted:
-                            app.state.pipeline._broadcast_audio({
-                                "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
-                                "sr": SAMPLE_RATE,
-                                "fmt": "f32"
-                            })
+                            app.state.pipeline._broadcast_pcm(audio, SAMPLE_RATE)
                         app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
                     finally:
                         app.state.pipeline._stop_speaking()

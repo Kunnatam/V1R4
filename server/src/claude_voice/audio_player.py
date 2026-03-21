@@ -15,8 +15,10 @@ class AudioPlayer:
 
     def interruptible_sleep(self, duration: float):
         """Sleep for duration but return early if stop() is called."""
-        self._stop_event.clear()
+        if self._stop_event.is_set():
+            return  # already stopped — don't sleep
         self._stop_event.wait(timeout=duration)
+        self._stop_event.clear()
 
     @property
     def is_active(self) -> bool:

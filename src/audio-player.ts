@@ -25,10 +25,14 @@ function createAudioContext(): void {
 export function initAudioPlayer(): void {
   createAudioContext();
 
-  // Recreate AudioContext after lid close/open — resume() alone is unreliable on macOS WKWebView
+  // Resume or recreate AudioContext after lid close/open
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      createAudioContext();
+    if (document.visibilityState === 'visible' && audioCtx) {
+      if (audioCtx.state === 'closed') {
+        createAudioContext();
+      } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
     }
   });
 }

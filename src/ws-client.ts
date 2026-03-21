@@ -29,6 +29,7 @@ export function parseStatusMessage(raw: string): StatusMessage | null {
 export type AudioMessage = {
   pcm: string;
   sr: number;
+  fmt?: 'f32' | 'i16';
 };
 
 export function parseAudioMessage(raw: string): AudioMessage | null {
