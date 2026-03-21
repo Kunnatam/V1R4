@@ -91,7 +91,7 @@ export function connectStatus(
 }
 
 export function connectAudio(
-  onAudio: (pcm: Int16Array, sampleRate: number) => void,
+  onAudio: (pcm: Float32Array, sampleRate: number) => void,
 ): void {
   let reconnectMs = RECONNECT_BASE_MS;
 
@@ -109,7 +109,7 @@ export function connectAudio(
       for (let i = 0; i < binary.length; i++) {
         bytes[i] = binary.charCodeAt(i);
       }
-      const pcm = new Int16Array(bytes.buffer);
+      const pcm = new Float32Array(bytes.buffer);
       onAudio(pcm, msg.sr);
     };
 

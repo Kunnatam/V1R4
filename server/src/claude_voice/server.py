@@ -185,10 +185,10 @@ def create_app(custom_lifespan=None) -> FastAPI:
             app.state.pipeline._start_speaking()
             try:
                 if not app.state.muted:
-                    pcm_int16 = (audio * 32767).astype(np.int16)
                     app.state.pipeline._broadcast_audio({
-                        "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                        "sr": SAMPLE_RATE
+                        "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
+                        "sr": SAMPLE_RATE,
+                        "fmt": "f32"
                     })
                 app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
             finally:
@@ -221,10 +221,10 @@ def create_app(custom_lifespan=None) -> FastAPI:
                     app.state.pipeline._start_speaking()
                     try:
                         if not app.state.muted:
-                            pcm_int16 = (audio * 32767).astype(np.int16)
                             app.state.pipeline._broadcast_audio({
-                                "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                                "sr": SAMPLE_RATE
+                                "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
+                                "sr": SAMPLE_RATE,
+                                "fmt": "f32"
                             })
                         app.state.pipeline.player.interruptible_sleep(len(audio) / SAMPLE_RATE)
                     finally:

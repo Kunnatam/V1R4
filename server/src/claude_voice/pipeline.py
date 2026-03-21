@@ -99,10 +99,10 @@ class SpeakPipeline:
 
             # Broadcast PCM to avatar for playback (respects mute)
             if not self._muted:
-                pcm_int16 = (audio * 32767).astype(np.int16)
                 self._broadcast_audio({
-                    "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                    "sr": sr
+                    "pcm": base64.b64encode(audio.astype(np.float32).tobytes()).decode(),
+                    "sr": sr,
+                    "fmt": "f32"
                 })
 
             # Interruptible wait so /stop can cancel
@@ -143,10 +143,10 @@ class SpeakPipeline:
             if leadin_audio is not None and len(leadin_audio) > 0 and not self._muted:
                 perf_logger.info("Pipeline lead-in: %d samples (%.0fms)",
                                  len(leadin_audio), len(leadin_audio) / SAMPLE_RATE * 1000)
-                pcm_int16 = (leadin_audio * 32767).astype(np.int16)
                 self._broadcast_audio({
-                    "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                    "sr": SAMPLE_RATE
+                    "pcm": base64.b64encode(leadin_audio.astype(np.float32).tobytes()).decode(),
+                    "sr": SAMPLE_RATE,
+                    "fmt": "f32"
                 })
                 total_samples += len(leadin_audio)
 
@@ -172,10 +172,10 @@ class SpeakPipeline:
                     self._dump_wav(chunk, SAMPLE_RATE, text)
 
                 if not self._muted:
-                    pcm_int16 = (chunk * 32767).astype(np.int16)
                     self._broadcast_audio({
-                        "pcm": base64.b64encode(pcm_int16.tobytes()).decode(),
-                        "sr": SAMPLE_RATE
+                        "pcm": base64.b64encode(chunk.astype(np.float32).tobytes()).decode(),
+                        "sr": SAMPLE_RATE,
+                        "fmt": "f32"
                     })
                 total_samples += len(chunk)
 

@@ -38,7 +38,7 @@ export function notifySpeakStart(): void {
   firstChunkReceived = false;
 }
 
-export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
+export function queueAudioChunk(pcm: Float32Array, sampleRate: number): void {
   if (!audioCtx || !analyser) return;
   if (audioCtx.state === 'suspended' || audioCtx.state === 'closed') {
     createAudioContext();
@@ -50,14 +50,8 @@ export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
     if (import.meta.env.DEV) console.log(`[PERF] First audio chunk received: ${elapsed}ms from speaking start`);
   }
 
-  // Int16 PCM → Float32
-  const float32 = new Float32Array(pcm.length);
-  for (let i = 0; i < pcm.length; i++) {
-    float32[i] = pcm[i] / 32768;
-  }
-
-  const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
-  buffer.copyToChannel(float32, 0);
+  const buffer = audioCtx.createBuffer(1, pcm.length, sampleRate);
+  buffer.copyToChannel(pcm, 0);
 
   const source = audioCtx.createBufferSource();
   source.buffer = buffer;
