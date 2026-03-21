@@ -17,6 +17,17 @@ export function initAudioPlayer(): void {
   analyser.fftSize = TIME_DOMAIN_SIZE;
   analyser.connect(audioCtx.destination);
   nextPlayTime = 0;
+
+  // Resume AudioContext after lid close/open or tab visibility change
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && audioCtx?.state === 'suspended') {
+      audioCtx.resume();
+    }
+  });
+  // Also resume on any click — fallback for stubborn WebView suspension
+  window.addEventListener('mousedown', () => {
+    if (audioCtx?.state === 'suspended') audioCtx.resume();
+  }, { once: false });
 }
 
 export function notifySpeakStart(): void {
