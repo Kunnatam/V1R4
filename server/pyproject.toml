@@ -7,7 +7,6 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "kokoro>=0.9.4",
     "soundfile>=0.13.0",
-    "sounddevice>=0.5.0",
     "numpy>=1.26.0",
     "python-dotenv>=1.0.0",
     "websockets>=12.0",

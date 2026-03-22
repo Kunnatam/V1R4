@@ -97,7 +97,6 @@ function onStatusMessage(msg: StatusMessage): void {
         speakingStopTimer = setTimeout(() => {
           state.speaking = false;
           state.mode = 'idle';
-          state.amplitude = 0;
           resetLipSync();
           resetAudioPlayback();
           clearSubtitle();
@@ -505,9 +504,8 @@ function animate(): void {
   const dt = delta;
   cameraTime += dt;
 
-  // Amplitude: prefer local playback (synced to audio) over WebSocket (delayed)
-  const localAmp = getPlaybackAmplitude();
-  const ampSource = localAmp > 0.005 ? localAmp : state.amplitude;
+  // Amplitude from local Web Audio analyser
+  const ampSource = getPlaybackAmplitude();
   ampSpring = springDamped(ampSpring, ampSource, AMP_HL, dt);
   const smoothAmp = Math.max(0, ampSpring.pos);
 

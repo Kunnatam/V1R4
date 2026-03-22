@@ -1,6 +1,6 @@
-// Web Audio API amplitude analysis (muted — backend handles playback)
-// Routes PCM through AnalyserNode without outputting to speakers,
-// so we get synced amplitude for lipsync without double audio.
+// Web Audio API playback + amplitude analysis
+// Receives PCM chunks from TTS server via WebSocket,
+// plays through speakers and analyzes amplitude for lipsync.
 
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -11,12 +11,34 @@ let speakStartTime = 0;
 const TIME_DOMAIN_SIZE = 256;
 const timeDomainData = new Float32Array(TIME_DOMAIN_SIZE);
 
-export function initAudioPlayer(): void {
+function createAudioContext(): void {
+  if (audioCtx) {
+    try { audioCtx.close(); } catch { /* ignore */ }
+  }
   audioCtx = new AudioContext();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = TIME_DOMAIN_SIZE;
-  // NOT connected to destination — analysis only, no audio output
+  analyser.connect(audioCtx.destination);
   nextPlayTime = 0;
+}
+
+export function initAudioPlayer(): void {
+  createAudioContext();
+
+  // Recreate AudioContext after screen off / lid close
+  // resume() is unreliable on macOS WKWebView — context reports "running" but output is dead
+  let lastVisible = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      lastVisible = Date.now();
+    } else if (document.visibilityState === 'visible') {
+      const away = Date.now() - lastVisible;
+      // Only recreate if away for >2s (screen off / lid close, not brief focus change)
+      if (away > 2000) {
+        createAudioContext();
+      }
+    }
+  });
 }
 
 export function notifySpeakStart(): void {
@@ -24,9 +46,11 @@ export function notifySpeakStart(): void {
   firstChunkReceived = false;
 }
 
-export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
+export function queueAudioChunk(pcm: Float32Array, sampleRate: number): void {
   if (!audioCtx || !analyser) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioCtx.state === 'suspended' || audioCtx.state === 'closed') {
+    createAudioContext();
+  }
 
   if (!firstChunkReceived) {
     firstChunkReceived = true;
@@ -34,14 +58,8 @@ export function queueAudioChunk(pcm: Int16Array, sampleRate: number): void {
     if (import.meta.env.DEV) console.log(`[PERF] First audio chunk received: ${elapsed}ms from speaking start`);
   }
 
-  // Int16 PCM → Float32
-  const float32 = new Float32Array(pcm.length);
-  for (let i = 0; i < pcm.length; i++) {
-    float32[i] = pcm[i] / 32768;
-  }
-
-  const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
-  buffer.copyToChannel(float32, 0);
+  const buffer = audioCtx.createBuffer(1, pcm.length, sampleRate);
+  buffer.copyToChannel(pcm, 0);
 
   const source = audioCtx.createBufferSource();
   source.buffer = buffer;
@@ -67,6 +85,17 @@ export function getPlaybackAmplitude(): number {
 }
 
 export function resetAudioPlayback(): void {
+  // Only reset if all queued audio has finished playing
+  if (audioCtx && nextPlayTime > 0 && audioCtx.currentTime < nextPlayTime) {
+    return; // audio still playing — let it drain
+  }
+  nextPlayTime = 0;
+  firstChunkReceived = false;
+  speakStartTime = 0;
+}
+
+export function forceResetAudioPlayback(): void {
+  // Force stop — used by /stop endpoint
   nextPlayTime = 0;
   firstChunkReceived = false;
   speakStartTime = 0;
