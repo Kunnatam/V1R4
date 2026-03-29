@@ -66,7 +66,10 @@ export function setSubtitle(text: string, duration: number): void {
   subtitleText = text;
   subtitleCharsRevealed = 0;
   subtitleStartTime = performance.now() / 1000;
-  subtitleDuration = duration > 0 ? duration : text.length * 0.06; // fallback: ~60ms per char
+  // Chunked mode sends duration=0 because total length isn't known upfront.
+  // Use ~15 chars/sec so reveal paces with natural speech.
+  // Batch mode (duration>0) uses exact audio duration.
+  subtitleDuration = duration > 0 ? duration : text.length / 15;
   subtitleOpacity = 0.02; // kick-start opacity so first frame renders
   subtitleOpacityTarget = 1.0;
   if (import.meta.env.DEV) console.log(`[V1R4] Subtitle set: "${text.slice(0, 60)}..." dur=${subtitleDuration.toFixed(1)}s`);
