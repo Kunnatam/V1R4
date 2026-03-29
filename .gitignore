@@ -32,3 +32,8 @@ __pycache__/
 # Server runtime
 server/.env
 server/.server.pid
+.avatar.pid
+server/.avatar.pid
+
+# Claude Code
+.claude/
