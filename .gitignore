@@ -16,7 +16,6 @@ src-tauri/gen/
 
 # VRM models (user-loaded, too large for git)
 public/models/*.vrm
-!public/models/avatar.vrm
 
 # OS
 .DS_Store
